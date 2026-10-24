@@ -356,6 +356,11 @@ func _next_traveler() -> void:
 		await Game.wait(0.6)
 		_end_day()
 		return
+	if Game.shot.begins_with("trailer_day"):
+		var limit := 3 if Game.shot == "trailer_day1" else 2
+		if idx >= limit:
+			Game.end_movie(1.2)
+			return
 	current = roster[idx]
 	query_region = ""
 	code_state = ""

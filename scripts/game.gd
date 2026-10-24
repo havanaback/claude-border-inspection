@@ -62,6 +62,12 @@ func reset_run() -> void:
 	rng.seed = 42 if test_mode else int(Time.get_unix_time_from_system())
 
 
+## 录像模式：延迟数秒后退出（配合 --write-movie 落盘）
+func end_movie(delay: float = 1.0) -> void:
+	await get_tree().create_timer(delay).timeout
+	get_tree().quit()
+
+
 ## 统一等待（自动测试时加速）
 func wait(sec: float) -> void:
 	await get_tree().create_timer(sec * speed).timeout

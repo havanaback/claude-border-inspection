@@ -18,3 +18,6 @@ shots/
 # 发布打包产物（走 Release 附件，不入库）
 dist/
 *.zip
+
+# 无关软件的数据
+.workbuddy/

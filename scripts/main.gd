@@ -28,13 +28,24 @@ func _ready() -> void:
 	if Game.shot == "title_click":
 		Game.test_mode = true
 		Game.speed = 1.0
+	if Game.shot.begins_with("trailer"):
+		Game.test_mode = true
+		Game.speed = 1.0
 	if Game.test_mode:
 		Game.reset_run()
-		if Game.shot == "title" or Game.shot == "title_click":
+		if Game.shot == "trailer_day3":
+			Game.day = 3
+		if Game.shot == "title" or Game.shot == "title_click" or Game.shot == "trailer_title":
 			var ts := Title.new()
 			_mount(ts)
 			if Game.shot == "title_click":
 				_click_test(ts)
+			elif Game.shot == "trailer_title":
+				Game.end_movie(5.0)
+		elif Game.shot == "trailer_final":
+			var f := FinalDay.new()
+			f.finished.connect(func(_e: String): Game.end_movie(1.0))
+			_mount(f)
 		else:
 			_goto_day(Game.day)
 	else:

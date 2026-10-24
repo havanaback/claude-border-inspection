@@ -11,6 +11,8 @@
 
 ![标题画面](docs/screenshot-title.png)
 
+**▶ 预告片**：[docs/trailer.mp4](docs/trailer.mp4)（48 秒）
+
 ## ⬇ 下载（Windows x64，免安装）
 
 ### [**点此下载最新版**](https://github.com/havanaback/claude-border-inspection/releases/latest)
