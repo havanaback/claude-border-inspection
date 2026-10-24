@@ -1,7 +1,7 @@
 # 边境检察官：Claude 入境审查
 
-[![最新版本](https://img.shields.io/github/v/release/havanaback/Claude%E5%85%A5%E5%A2%83%E5%AE%A1%E6%9F%A5?label=%E7%89%88%E6%9C%AC&color=2ea44f)](https://github.com/havanaback/Claude%E5%85%A5%E5%A2%83%E5%AE%A1%E6%9F%A5/releases/latest)
-[![下载量](https://img.shields.io/github/downloads/havanaback/Claude%E5%85%A5%E5%A2%83%E5%AE%A1%E6%9F%A5/total?label=%E4%B8%8B%E8%BD%BD&color=blue)](https://github.com/havanaback/Claude%E5%85%A5%E5%A2%83%E5%AE%A1%E6%9F%A5/releases)
+[![最新版本](https://img.shields.io/github/v/release/havanaback/claude-border-inspection?label=%E7%89%88%E6%9C%AC&color=2ea44f)](https://github.com/havanaback/claude-border-inspection/releases/latest)
+[![下载量](https://img.shields.io/github/downloads/havanaback/claude-border-inspection/total?label=%E4%B8%8B%E8%BD%BD&color=blue)](https://github.com/havanaback/claude-border-inspection/releases)
 [![Godot](https://img.shields.io/badge/Godot-4.7-478cbf?logo=godotengine&logoColor=white)](https://godotengine.org)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -13,7 +13,7 @@
 
 ## ⬇ 下载（Windows x64，免安装）
 
-### [**点此下载最新版**](https://github.com/havanaback/Claude%E5%85%A5%E5%A2%83%E5%AE%A1%E6%9F%A5/releases/latest)
+### [**点此下载最新版**](https://github.com/havanaback/claude-border-inspection/releases/latest)
 
 1. 在 Release 页面下载 `Claude-Border-Inspection-win64.zip`
 2. **解压到任意文件夹**（`exe` 与 `pck` 必须在同一目录，不要只把 exe 拖出来单独运行）
