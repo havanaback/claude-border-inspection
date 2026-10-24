@@ -1,14 +1,31 @@
 # 边境检察官：Claude 入境审查
 
+[![最新版本](https://img.shields.io/github/v/release/havanaback/Claude%E5%85%A5%E5%A2%83%E5%AE%A1%E6%9F%A5?label=%E7%89%88%E6%9C%AC&color=2ea44f)](https://github.com/havanaback/Claude%E5%85%A5%E5%A2%83%E5%AE%A1%E6%9F%A5/releases/latest)
+[![下载量](https://img.shields.io/github/downloads/havanaback/Claude%E5%85%A5%E5%A2%83%E5%AE%A1%E6%9F%A5/total?label=%E4%B8%8B%E8%BD%BD&color=blue)](https://github.com/havanaback/Claude%E5%85%A5%E5%A2%83%E5%AE%A1%E6%9F%A5/releases)
+[![Godot](https://img.shields.io/badge/Godot-4.7-478cbf?logo=godotengine&logoColor=white)](https://godotengine.org)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > **Papers, please. 以及你的时区，你的语言包，还有你的宫廷玉液酒。**
 
 一款致敬《Papers, Please》的黑色幽默模拟游戏。你是 **Anthrotzka** 边境检查站的检察官，每天坐在检查台后，审查一位又一位想"入境"使用 Claude 的旅客。核证件、比 IP、查时区、对暗号——规则手册一天比一天厚，而你手里的"准予/拒绝"两个章，决定着一个又一个人今天能不能用上 AI。
 
 ![标题画面](docs/screenshot-title.png)
 
-## 运行方式
+## ⬇ 下载（Windows x64，免安装）
 
-**方式一（推荐）**：安装 [Godot 4.7+](https://godotengine.org/download)，用 Godot 打开本项目（`project.godot`），按 F5 运行。
+### [**点此下载最新版**](https://github.com/havanaback/Claude%E5%85%A5%E5%A2%83%E5%AE%A1%E6%9F%A5/releases/latest)
+
+1. 在 Release 页面下载 `Claude-Border-Inspection-win64.zip`
+2. **解压到任意文件夹**（`exe` 与 `pck` 必须在同一目录，不要只把 exe 拖出来单独运行）
+3. 双击 `ClaudeBorderInspection.exe`，打开即玩，无需安装
+
+> 首次运行若弹出 SmartScreen 蓝色提示，点「更多信息 → 仍要运行」。程序未做代码签名，这是开源小游戏的通病，并非有毒。
+>
+> exe 需要 Vulkan 支持（Forward+ 渲染）。极老的集显机器可能无法启动，可在 Godot 中改用 Compatibility 渲染器重导出。
+
+## 运行方式（从源码）
+
+**方式一**：安装 [Godot 4.7+](https://godotengine.org/download)，用 Godot 打开本项目（`project.godot`），按 `F5` 运行。
 
 **方式二（命令行）**：
 
