@@ -1,0 +1,16 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+*.translation
+
+# 本机专用启动脚本（含绝对路径）
+启动游戏.bat
+_mk*.py
+_mklnk.ps1
+
+# 临时截图目录（docs/ 中的正式截图除外）
+shots/
+
+# 导出的二进制
+*.exe
+*.pck

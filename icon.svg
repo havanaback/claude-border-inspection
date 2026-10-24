@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="16" fill="#3d4438"/>
+  <rect x="14" y="14" width="100" height="100" rx="8" fill="#b8a888"/>
+  <rect x="22" y="22" width="84" height="84" rx="4" fill="none" stroke="#c23b22" stroke-width="6"/>
+  <text x="64" y="58" font-family="serif" font-size="34" font-weight="bold" fill="#c23b22" text-anchor="middle">准予</text>
+  <text x="64" y="94" font-family="serif" font-size="20" fill="#c23b22" text-anchor="middle">ANTHROTZKA</text>
+</svg>
