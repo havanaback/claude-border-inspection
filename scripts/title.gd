@@ -42,6 +42,19 @@ func _ready() -> void:
 	start.custom_minimum_size = Vector2(300, 52)
 	center.add_child(start)
 
+	var endless_btn := UIU.button("加班无尽模式（Beta）", 18, func():
+		Game.reset_run()
+		Game.endless = true
+		finished.emit()
+	, Color("6b3a30"))
+	endless_btn.custom_minimum_size = Vector2(300, 46)
+	center.add_child(endless_btn)
+	if Game.endless_best > 0:
+		var best := UIU.label("无尽最佳纪录：第 %d 夜" % Game.endless_best, 13, UIU.COL_YELLOW)
+		best.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		best.custom_minimum_size = Vector2(300, 18)
+		center.add_child(best)
+
 	var help := UIU.button("操作说明", 16, _show_help, Color("444a3f"))
 	help.custom_minimum_size = Vector2(300, 40)
 	center.add_child(help)

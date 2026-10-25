@@ -5,6 +5,7 @@ extends Control
 signal finished
 
 var day := 1
+var gen := 0                # 代际令牌：任何旧协程链唤醒时发现代际已变即退出
 var roster: Array = []
 var idx := 0
 var current: Dictionary = {}
@@ -51,14 +52,24 @@ var react_bar: Panel
 var hint_label: Label
 
 
+var endless := false
+var night_no := 0
+var news_label: Label
+var news_idx := 0
+
+
 func setup(params: Dictionary) -> void:
 	day = params.get("day", 1)
-
-
-func _ready() -> void:
-	roster = Travelers.day_roster(day)
+	endless = params.get("endless", false)
+	night_no = params.get("night", 0)
+	if endless:
+		roster = params.get("roster", [])
+	else:
+		roster = Travelers.day_roster(day)
 	for i in roster.size():
 		roster[i]["_no"] = i + 1
+	if endless:
+		day = 99
 	_build()
 	Sfx.start_ambient()
 	Sfx.play("steps", -8.0)
@@ -86,7 +97,8 @@ func _build() -> void:
 	top.size = Vector2(1280, 40)
 	add_child(top)
 
-	var day_l := UIU.label("第 %d 天 · %s" % [day, Rules.day_date(day)], 15, UIU.COL_TEXT_LIGHT)
+	var head_txt := ("加班 · 第 %d 夜" % night_no) if endless else ("第 %d 天 · %s" % [day, Rules.day_date(day)])
+	var day_l := UIU.label(head_txt, 15, UIU.COL_TEXT_LIGHT)
 	day_l.position = Vector2(14, 10)
 	top.add_child(day_l)
 
@@ -121,6 +133,19 @@ func _build() -> void:
 	timer_fill.position = Vector2(0, 0)
 	timer_fill.size = Vector2(1280, 8)
 	timer_bg.add_child(timer_fill)
+
+	# 站内广播（剧情）/ 今夜荒诞新规（无尽）
+	news_label = UIU.label("", 13, Color("9aa58f"))
+	news_label.position = Vector2(0, 52)
+	news_label.size = Vector2(1280, 18)
+	news_label.clip_text = false
+	add_child(news_label)
+	if endless and not Game.tonight_rule.is_empty():
+		news_label.text = "⚑ " + String(Game.tonight_rule.get("text", ""))
+		news_label.add_theme_color_override("font_color", UIU.COL_YELLOW)
+		news_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	else:
+		_news_loop()
 
 	# 旅客与军官
 	portrait = Portrait.new()
@@ -208,9 +233,9 @@ func _build() -> void:
 	)
 	mag_btn.toggle_mode = true
 	tools.add_child(mag_btn)
-	if day >= 6:
+	if day >= 6 or endless:
 		tools.add_child(_tool_button("股权查询 [G]", 150, func(): _open_overlay("equity")))
-	if day >= 7:
+	if day >= 7 or endless:
 		tools.add_child(_tool_button("组织名册 [F]", 150, func(): _open_overlay("roster")))
 
 	# 印章
@@ -243,6 +268,21 @@ func _build() -> void:
 	hint_label = UIU.label("A 准予 · D 拒绝 · X 拘留（测谎时） · E 放大镜 · R 手册 · Q 查询终端 ｜ 卡片上的归属地是旅客自己填的，用终端验真。", 12, Color("b8bda8"))
 	hint_label.position = Vector2(16, 697)
 	hint_bg.add_child(hint_label)
+
+
+func _news_loop() -> void:
+	while is_inside_tree() and not endless:
+		var pool: Array = Rules.news(Game.day)
+		var txt := String(pool[news_idx % pool.size()])
+		news_idx += 1
+		news_label.text = txt
+		var w: float = news_label.get_font("font").get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		news_label.position.x = 1300
+		var dur: float = 6.0 + w * 0.02
+		var tw := create_tween()
+		tw.tween_property(news_label, "position:x", -w - 40.0, dur)
+		await tw.finished
+		await Game.wait(0.6)
 
 
 func _tool_button(txt: String, w: int, cb: Callable) -> Button:
@@ -352,9 +392,12 @@ func _process(delta: float) -> void:
 # ============================================================ 旅客流程
 
 func _next_traveler() -> void:
+	gen += 1
+	var g := gen
 	if idx >= roster.size():
 		await Game.wait(0.6)
-		_end_day()
+		if g == gen:
+			_end_day()
 		return
 	if Game.shot.begins_with("trailer_day"):
 		var limit := 3 if Game.shot == "trailer_day1" else 2
@@ -377,6 +420,9 @@ func _next_traveler() -> void:
 	_set_stamps(false)
 	detain_btn.visible = false
 
+	if current.has("revisit"):
+		Travelers.apply_revisit(current)
+		Game.achieve("reunion")
 	card.setup(current, day)
 
 	portrait.visible = true
@@ -392,13 +438,19 @@ func _next_traveler() -> void:
 	quota_label.text = "剩余旅客 %d / %d" % [roster.size() - idx, roster.size()]
 
 	await Game.wait(0.45)
+	if g != gen:
+		return
 	_say(String(current["lines"].get("intro", "……")))
 	Sfx.play("ding", -16.0)
 	_set_stamps(true)
 
 	if current.has("code"):
 		await Game.wait(1.1)
+		if g != gen:
+			return
 		await _run_code_test(current)
+		if g != gen:
+			return
 
 	if Game.test_mode and Game.shot != "booth_state":
 		_auto_decide()
@@ -435,6 +487,8 @@ func _set_stamps(on: bool) -> void:
 
 ## ---------------- 暗号测谎（第 3 天+） ----------------
 func _run_code_test(t: Dictionary) -> void:
+	if not t.has("code"):
+		return
 	code_state = "pending"
 	_set_stamps(false)
 	Sfx.stop_ambient()
@@ -490,6 +544,7 @@ func _run_code_test(t: Dictionary) -> void:
 ## ---------------- 判罚 ----------------
 func _evaluate(action: String) -> Dictionary:
 	var t := current
+	Game.decisions[String(t.get("id", ""))] = action
 	var expect := String(t.get("expect", "approve"))
 	stats["judged"] += 1
 
@@ -607,9 +662,9 @@ func _stamp(action: String) -> void:
 		aftermath_line.text = String(ev["reveal"])
 		Sfx.play("beep_low", -14.0)
 
-	# 良心
+	# 良心（回头客可能有加倍伤害）
 	if ev.get("conscience", false):
-		Game.hit_conscience(1)
+		Game.hit_conscience(int(t.get("conscience_cost", 1)))
 		if String(ev.get("aftermath", "")) != "":
 			aftermath_line.text = "【事后】" + String(ev["aftermath"])
 		Sfx.play("sad", -8.0)
@@ -621,9 +676,23 @@ func _stamp(action: String) -> void:
 		if not entry.is_empty():
 			_float("图鉴解锁：%s" % entry["name"], UIU.COL_YELLOW, Vector2(1030, 640))
 
+	# 成就检查
+	var kind := String(ev.get("kind", ""))
+	if kind == "caught":
+		Game.achieve("first_blood")
+	if action == "detain":
+		Game.total_detained += 1
+		if Game.total_detained >= 3:
+			Game.achieve("code_master")
+	if (kind == "caught" or kind == "ok") and (max_time - time_left) < 8.0:
+		Game.achieve("speed_run")
+	if Game.total_judged + int(stats["judged"]) >= 100:
+		Game.achieve("stamp_100")
+
 	await Game.wait(1.7)
 	if Game.shot == "booth_state":
 		return
+	gen += 1
 	idx += 1
 	_next_traveler()
 
@@ -676,6 +745,18 @@ func _end_day() -> void:
 			var pool: Array = Rules.generic_letters()
 			Game.add_letter(String(r["name"]), String(pool[idx % pool.size()]))
 	Game.apply_day(stats)
+	# 日终成就
+	if int(stats.get("judged", 0)) >= 5:
+		if int(stats.get("missed", 0)) == 0 and int(stats.get("wrong_basis", 0)) == 0:
+			Game.achieve("no_miss")
+		if int(stats.get("caught", 0)) >= 4:
+			Game.achieve("iron_fist")
+		if rejected_ids.is_empty():
+			Game.achieve("mercy_day")
+	if day == 8 and not endless:
+		Game.achieve("wrong_day")
+	if Game.conscience <= 0:
+		Game.achieve("conscience_zero")
 	await Game.wait(0.3)
 	finished.emit()
 

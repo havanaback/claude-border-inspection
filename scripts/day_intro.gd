@@ -5,10 +5,12 @@ extends Control
 signal finished
 
 var day := 1
+var endless := false
 
 
 func setup(params: Dictionary) -> void:
 	day = params.get("day", 1)
+	endless = params.get("endless", false)
 
 
 func _ready() -> void:
@@ -21,10 +23,12 @@ func _ready() -> void:
 	head.position = Vector2(140, 70)
 	head.size = Vector2(1000, 86)
 	add_child(head)
-	var h1 := UIU.label("第 %d 天 ｜ %s ｜ Anthrotzka 边境检查站" % [day, Rules.day_date(day)], 26, UIU.COL_TEXT_LIGHT)
+	var h1_txt := ("加班 · 第 %d 夜 ｜ 规则全部叠加 ｜ 外加一条新规" % day) if endless else ("第 %d 天 ｜ %s ｜ Anthrotzka 边境检查站" % [day, Rules.day_date(day)])
+	var h1 := UIU.label(h1_txt, 26 if not endless else 24, UIU.COL_TEXT_LIGHT)
 	h1.position = Vector2(28, 12)
 	head.add_child(h1)
-	var h2 := UIU.label(Rules.day_headline(day), 16, UIU.COL_YELLOW)
+	var h2_txt := String(Game.tonight_rule.get("text", "今夜没有新规。（这本身就是个问题）")) if endless else Rules.day_headline(day)
+	var h2 := UIU.label(h2_txt, 16, UIU.COL_YELLOW)
 	h2.position = Vector2(28, 52)
 	head.add_child(h2)
 
@@ -34,7 +38,7 @@ func _ready() -> void:
 	book.size = Vector2(900, 440)
 	add_child(book)
 
-	var title := UIU.label("— 当日规则手册 · 摘录 —", 15, UIU.COL_INK)
+	var title := UIU.label("— 今夜规则手册 · 全量摘录 —" if endless else "— 当日规则手册 · 摘录 —", 15, UIU.COL_INK)
 	title.position = Vector2(30, 14)
 	book.add_child(title)
 
@@ -47,7 +51,10 @@ func _ready() -> void:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
 
-	for rule in Rules.day_rules(day):
+	var endless_rules: Array = []
+	if endless:
+		endless_rules = [{"kind": "hand", "text": String(Game.tonight_rule.get("text", ""))}] + Rules.day_rules(99)
+	for rule in (endless_rules if endless else Rules.day_rules(day)):
 		var box := PanelContainer.new()
 		match String(rule["kind"]):
 			"hand":
@@ -80,7 +87,7 @@ func _ready() -> void:
 		finished.emit()
 		return
 
-	var btn := UIU.button("领取手册，开始工作", 20, func():
+	var btn := UIU.button("继续加班 →", 20 if endless else 20, func():
 		Sfx.play("page")
 		finished.emit()
 	, Color("3e5a3a"))

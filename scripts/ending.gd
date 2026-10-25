@@ -10,6 +10,7 @@ var ending := "A"
 func setup(params: Dictionary) -> void:
 	ending = params.get("ending", "A")
 	Game.ending_reached = ending
+	Game.achieve("ending_a" if ending == "A" else "ending_b")
 
 
 func _ready() -> void:

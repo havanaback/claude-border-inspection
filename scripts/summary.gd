@@ -6,14 +6,19 @@ signal finished
 
 var day := 1
 var wage := 0
+var endless := false
 
 
 func setup(params: Dictionary) -> void:
 	day = params.get("day", 1)
+	endless = params.get("endless", false)
 
 
 func _ready() -> void:
 	var stats: Dictionary = Game.day_stats
+	if endless:
+		_endless_ready(stats)
+		return
 	var bg := UIU.panel(UIU.COL_BG)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
@@ -118,6 +123,9 @@ func _ready() -> void:
 	var b2 := UIU.button("替代方案图鉴", 17, _open_gallery, Color("3a4a5a"))
 	b2.custom_minimum_size = Vector2(190, 56)
 	btns.add_child(b2)
+	var b4 := UIU.button("成 就", 17, _open_achievements, Color("4a4252"))
+	b4.custom_minimum_size = Vector2(120, 56)
+	btns.add_child(b4)
 
 	var next_txt := "下班睡觉 →" if day < Game.TOTAL_DAYS else "睡觉。明天是最后一天 →"
 	var b3 := UIU.button(next_txt, 20, func(): finished.emit(), Color("3e5a3a"))
@@ -131,6 +139,8 @@ func _ready() -> void:
 		add_child(warn)
 
 	Sfx.play("coin", -8.0)
+	if day >= Game.TOTAL_DAYS and Game.conscience >= Game.START_CONSCIENCE:
+		Game.achieve("conscience_full")
 	Game.take_shot("summary")
 	if Game.shot == "gallery":
 		_open_gallery()
@@ -256,3 +266,107 @@ class _FamilyPhoto extends Node2D:
 			draw_rect(Rect2(58, 76, 12, 8), Color("9aa5b5"))    # 一碗汤
 		if tier >= 2:
 			draw_circle(Vector2(96, 74), 6.0, Color("b0543a"))   # 一碗肉
+
+
+## ---------------- 无尽模式：夜结算 ----------------
+func _endless_ready(stats: Dictionary) -> void:
+	var caught: int = stats.get("caught", 0)
+	var missed: int = stats.get("missed", 0)
+	Game.endless_missed_night = missed
+	if Game.endless_night >= 5:
+		Game.achieve("endless_5")
+	Game.endless_best = maxi(Game.endless_best, Game.endless_night)
+	Game.save_game()
+
+	var over := missed >= 3
+	var bg := UIU.panel(Color("191d15"))
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+
+	var t1 := UIU.label(("绩效听证会" if over else "加班 · 第 %d 夜 · 战报" % Game.endless_night), 34,
+		UIU.COL_RED if over else UIU.COL_TEXT_LIGHT)
+	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t1.position = Vector2(0, 90)
+	t1.size = Vector2(1280, 44)
+	add_child(t1)
+
+	var info := UIU.label("今夜规则：%s
+查获 %d ｜ 漏放 %d ｜ %s" % [
+		String(Game.tonight_rule.get("text", "—")), caught, missed,
+		("漏放 3 人——你的执法资格被终止。" if over else "尚可继续。天亮了，但没有意义。")], 17, UIU.COL_TEXT_LIGHT)
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.position = Vector2(0, 160)
+	info.size = Vector2(1280, 60)
+	add_child(info)
+
+	if over:
+		var total := "你一共坚持了 %d 夜。累计查获 %d 人，误拒的无辜者只有你自己知道。
+历史最佳：%d 夜" % [
+			Game.endless_night, Game.total_caught, Game.endless_best]
+		var sum := UIU.label(total, 20, UIU.COL_YELLOW)
+		sum.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sum.position = Vector2(0, 280)
+		sum.size = Vector2(1280, 80)
+		add_child(sum)
+		Game.endless_over = true
+	else:
+		var nxt := UIU.button("下一夜 → （困意不算理由）", 20, func():
+			finished.emit()
+		, Color("6b3a30"))
+		nxt.custom_minimum_size = Vector2(340, 56)
+		nxt.position = Vector2(470, 400)
+		add_child(nxt)
+
+	var ach := UIU.button("成就 / 图鉴 / 申诉箱", 16, func():
+		_open_achievements()
+	, Color("3a4a5a"))
+	ach.custom_minimum_size = Vector2(240, 44)
+	ach.position = Vector2(520, 480 if not over else 380)
+	add_child(ach)
+
+	var back := UIU.button("返回标题（认输）", 16, func():
+		Game.endless = false
+		Game.endless_over = false
+		finished.emit()
+	, Color("444a3f"))
+	back.custom_minimum_size = Vector2(240, 44)
+	back.position = Vector2(520, 540 if not over else 440)
+	add_child(back)
+
+	if Game.test_mode:
+		await Game.wait(0.1)
+		if Game.endless_over:
+			Game.endless = false
+			Game.endless_over = false
+		finished.emit()
+
+
+## ---------------- 成就列表窗 ----------------
+func _open_achievements() -> void:
+	Sfx.play("page", -8.0)
+	var w := UIU.make_window(self, "成就 · 共 %d 项" % Rules.achievements().size(), Vector2(640, 470))
+	var c: VBoxContainer = w["content"]
+	var scr := ScrollContainer.new()
+	scr.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	c.add_child(scr)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 6)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scr.add_child(list)
+	for def in Rules.achievements():
+		var got: bool = String(def["id"]) in Game.achievements
+		var box := PanelContainer.new()
+		box.add_theme_stylebox_override("panel", UIU.sbox(
+			Color("26301f") if got else Color("20241c"),
+			Color("7fdd7f") if got else Color("3a4034"), 1, 3))
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		var mark := UIU.label("★" if got else "·", 17, UIU.COL_YELLOW if got else UIU.COL_GREY)
+		h.add_child(mark)
+		var v := VBoxContainer.new()
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.add_child(UIU.label(String(def["name"]), 15, Color("8fd08f") if got else UIU.COL_GREY))
+		v.add_child(UIU.label(String(def["desc"]), 12, UIU.COL_TEXT_LIGHT if got else UIU.COL_GREY))
+		h.add_child(v)
+		box.add_child(h)
+		list.add_child(box)

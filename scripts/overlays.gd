@@ -25,7 +25,10 @@ class Rulebook extends Control:
 		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		scroll.add_child(list)
 
-		for rule in Rules.day_rules(day):
+		var endless_rules: Array = []
+		if Game.endless:
+			endless_rules = [{"kind": "hand", "text": String(Game.tonight_rule.get("text", ""))}] + Rules.day_rules(99)
+		for rule in (endless_rules if Game.endless else Rules.day_rules(day)):
 			var box := PanelContainer.new()
 			match String(rule["kind"]):
 				"hand":

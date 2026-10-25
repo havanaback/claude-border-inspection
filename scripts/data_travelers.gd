@@ -337,6 +337,15 @@ static func _day5() -> Array:
 			"reason": "各字段一致，API 直连官方。",
 		},
 		{
+			"id": "day5_chen2", "name": "陈守仁", "expr": "calm", "revisit": true,
+			"look": _lk("e0b184", "c8c8c8", 1, {"beard": true, "clothes": "4a4a3a"}),
+			"fields": {"ip": "24.62.130.78", "region_claim": "美国·纽约", "nationality": "美国", "device": "iMac", "reason": "整理父亲日记", "tz": "America/New_York", "lang": "English", "ime": "English (US)", "pay": "Visa", "bin": "402177", "api": "api.anthropic.com"},
+			"lines": {"intro": "（占位）", "approve": "（占位）", "deny": "（占位）"},
+			"truth_region": "美国·纽约", "expect": "approve", "innocent": true,
+			"reason": "各字段一致。这一次，全英文系统。",
+			"aftermath": "",
+		},
+		{
 			"id": "day5_corp", "name": "Jonas Bauer", "expr": "innocent",
 			"look": _lk("f0c8a0", "d8b13c", 1, {"glasses": true, "clothes": "3a5a4a"}),
 			"fields": {"ip": "84.19.130.55", "region_claim": "德国·柏林", "nationality": "德国", "device": "ThinkPad", "reason": "SAP 顾问", "tz": "Europe/Berlin", "lang": "Deutsch", "ime": "German (DE)", "pay": "Visa", "bin": "542511", "api": "gateway.corp.hamburg.de"},
@@ -539,4 +548,34 @@ static func _day8() -> Array:
 			"reason": "第二条废止与否冲突 × 语言灰色地带。合规部裁定：依据不足。",
 			"aftermath": "她只是想给妈妈的诗集画封面。",
 		},
+		{
+			"id": "day8_xiaolin", "name": "小林", "expr": "smug", "revisit": true,
+			"look": _lk("d9a679", "1c1c1c", 1, {"glasses": true, "clothes": "3a4a6b"}),
+			"fields": {"ip": "104.28.77.9", "region_claim": "美国·加州", "nationality": "中国（留学签证）", "device": "ROG", "reason": "写作业", "tz": "America/Los_Angeles", "lang": "English", "ime": "English (US)", "pay": "Visa", "bin": "402166", "api": "api.anthropic.com", "employer": "已离职", "org": "个人开发者（无组织）"},
+			"lines": {"intro": "警官，我不入境了。GLM 挺好的。给您带了杯蜜雪冰城——柠檬水，四块钱，真香。", "approve": "（他笑着挥了挥手机。屏幕上是一个国产大模型的对话框。）", "deny": "（他把饮料放在窗台上，走了。）"},
+			"truth_region": "美国·加州", "expect": "gray", "innocent": false,
+			"reason": "灰色地带：他已不需要入境。",
+			"aftermath": "他放下的不是饮料，是一封退卡信。",
+		},
 	]
+
+
+## 回头客：根据历史判罚改写台词与后果（就地修改 t）
+static func apply_revisit(t: Dictionary) -> void:
+	match String(t.get("id", "")):
+		"day5_chen2":
+			if String(Game.decisions.get("day2_real_abc", "")) == "deny":
+				t["lines"]["intro"] = "警官，又见面了。我把系统全改成英文了——女儿的中文作业，我自己教。"
+				t["lines"]["deny"] = "……好吧。我明白了。这次是真的明白了。"
+				t["lines"]["approve"] = "（他长长地出了一口气。）谢谢。"
+				t["aftermath"] = "他再也没有来过。"
+				t["conscience_cost"] = 2
+			else:
+				t["lines"]["intro"] = "警官！书整理好了，父亲的味道都在。谢谢您那天放行。"
+				t["lines"]["approve"] = "（他放下一个小纸包。）桂花糖，家乡带来的。"
+				t["lines"]["deny"] = "……啊？这次是哪里错了？"
+		"day8_xiaolin":
+			if String(Game.decisions.get("day7_homework", "")) == "deny":
+				t["lines"]["intro"] = "警官，我不入境了。GLM 挺好的。给您带了杯蜜雪冰城——柠檬水，四块钱，真香。"
+			else:
+				t["lines"]["intro"] = "警官！那天谢谢您。不过我现在……用国产的了。给您带了杯蜜雪冰城。"

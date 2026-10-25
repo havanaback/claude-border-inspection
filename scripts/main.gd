@@ -7,7 +7,7 @@ var _fade: ColorRect
 
 
 func _ready() -> void:
-	Game.test_mode = OS.get_cmdline_user_args().has("--auto-test")
+	Game.test_mode = OS.get_cmdline_user_args().has("--auto-test") or OS.get_cmdline_user_args().has("--endless-test")
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shot="):
 			Game.shot = arg.substr(7)
@@ -31,6 +31,11 @@ func _ready() -> void:
 	if Game.shot.begins_with("trailer"):
 		Game.test_mode = true
 		Game.speed = 1.0
+	if Game.test_mode and OS.get_cmdline_user_args().has("--endless-test") and Game.shot == "":
+		Game.reset_run()
+		Game.endless = true
+		_goto_night(1)
+		return
 	if Game.test_mode:
 		Game.reset_run()
 		if Game.shot == "trailer_day3":
@@ -50,7 +55,12 @@ func _ready() -> void:
 			_goto_day(Game.day)
 	else:
 		var title := Title.new()
-		title.finished.connect(func(): _goto_day(Game.day))
+		title.finished.connect(func():
+			if Game.endless:
+				_goto_night(1)
+			else:
+				_goto_day(Game.day)
+		)
 		_mount(title)
 
 
@@ -79,6 +89,41 @@ func swap(scene: Control, params: Dictionary = {}) -> void:
 	_mount(scene, params)
 	await _fade_to(0.0, 0.25)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+## 无尽加班模式：夜循环
+func _goto_night(n: int) -> void:
+	Game.endless_night = n
+	var info := EndlessGen.night(n)
+	Game.tonight_rule = info["rule"]
+	var roster: Array = info["travelers"]
+	var intro := DayIntro.new()
+	intro.setup({"day": n, "endless": true})
+	intro.finished.connect(func():
+		var booth := Booth.new()
+		booth.setup({"day": n, "endless": true, "night": n, "roster": roster})
+		booth.finished.connect(func():
+			var sum := Summary.new()
+			sum.setup({"day": n, "endless": true})
+			sum.finished.connect(func():
+				if Game.test_mode and Game.endless_night >= 2:
+					print("ENDLESS_OK")
+					get_tree().quit(0)
+					return
+				if Game.endless_over or not Game.endless:
+					Game.endless = false
+					Game.endless_over = false
+					Game.save_game()
+					var t := Title.new()
+					swap(t)
+				else:
+					_goto_night(Game.endless_night + 1)
+			)
+			swap(sum, {"day": n, "endless": true})
+		)
+		swap(booth, {"day": n, "endless": true, "night": n, "roster": roster})
+	)
+	swap(intro, {"day": n, "endless": true})
 
 
 ## 加载画面 → 开场某一天

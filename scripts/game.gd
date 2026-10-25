@@ -4,6 +4,7 @@ extends Node
 
 signal conscience_changed(value: int)
 signal gallery_entry_unlocked(entry: Dictionary)
+signal achievement_unlocked_def(def: Dictionary)
 
 const START_CONSCIENCE := 10
 const TOTAL_DAYS := 8
@@ -11,6 +12,18 @@ const TOTAL_DAYS := 8
 var test_mode := false
 var speed := 1.0            # 自动测试时调快
 var shot := ""              # --shot=xxx：渲染指定画面并截图退出
+
+
+## 成就解锁（幂等）。返回是否 newly unlocked
+func achieve(id: String) -> bool:
+	if id in achievements:
+		return false
+	achievements.append(id)
+	for def in Rules.achievements():
+		if String(def["id"]) == id:
+			achievement_unlocked_def.emit(def)
+			return true
+	return true
 
 
 ## 渲染指定画面并保存截图（开发自检用）
@@ -39,6 +52,15 @@ var gallery_ids: Array[String] = []
 var achievement_thanks := false
 var letters: Array[Dictionary] = []   # {sender, day, text}
 var ending_reached := ""
+var decisions := {}            # traveler_id -> 最后一次盖章动作（回头客剧情用）
+var achievements: Array[String] = []
+var endless := false           # 无尽加班模式
+var endless_night := 0
+var endless_missed_night := 0  # 当夜漏放数（≥3 结束）
+var endless_best := 0
+var total_detained := 0
+var tonight_rule := {}         # 今夜荒诞规则
+var endless_over := false
 
 var day_stats := {}                   # 当日 booth 写入
 var rng := RandomNumberGenerator.new()
@@ -58,7 +80,16 @@ func reset_run() -> void:
 	achievement_thanks = false
 	letters.clear()
 	ending_reached = ""
+	# 成就 achievements 与 endless_best 属于跨局 meta 进度，不做清空
 	day_stats = {}
+	decisions.clear()
+	achievements.clear()
+	endless = false
+	endless_night = 0
+	endless_missed_night = 0
+	total_detained = 0
+	tonight_rule = {}
+	endless_over = false
 	rng.seed = 42 if test_mode else int(Time.get_unix_time_from_system())
 
 
@@ -136,6 +167,10 @@ func save_game() -> void:
 		"gallery": ", ".join(gallery_ids),
 		"achievement": achievement_thanks,
 		"letters": letters,
+		"achievements": ", ".join(achievements),
+		"decisions": decisions,
+		"endless_best": endless_best,
+		"detained": total_detained,
 	}
 	f.store_string(JSON.stringify(data))
 	f.close()
@@ -169,6 +204,12 @@ func load_game() -> bool:
 	letters.clear()
 	for l in parsed.get("letters", []):
 		letters.append(l)
+	achievements.clear()
+	for id in String(parsed.get("achievements", "")).split(", ", false):
+		achievements.append(id)
+	decisions = parsed.get("decisions", {})
+	endless_best = int(parsed.get("endless_best", 0))
+	total_detained = int(parsed.get("detained", 0))
 	return true
 
 
