@@ -45,6 +45,9 @@ var mag_btn: Button
 var mag_popup: PanelContainer
 var mag_popup_text: Label
 var detain_btn: Button
+var photo_btn: Button
+var asks_left := 2
+var ask_note: Label
 var approve_btn: Button
 var deny_btn: Button
 var react_bar_fill: ColorRect
@@ -75,6 +78,14 @@ func setup(params: Dictionary) -> void:
 	Sfx.play("steps", -8.0)
 	if Game.shot == "booth_state":
 		_shot_state()
+	elif Game.shot == "ask" or Game.shot == "photo":
+		_next_traveler()
+		await Game.wait(1.6)
+		if Game.shot == "ask":
+			_open_ask()
+		else:
+			_open_photo()
+		Game.take_shot(Game.shot)
 	elif Game.shot == "terminal":
 		_open_overlay("terminal")
 		Game.take_shot("terminal")
@@ -202,6 +213,13 @@ func _build() -> void:
 	react_bar_fill.size = Vector2(0, 10)
 	react_bar.add_child(react_bar_fill)
 
+	# 审问笔记
+	ask_note = UIU.label(" ", 12, Color("c8b88a"), true)
+	ask_note.position = Vector2(442, 344)
+	ask_note.size = Vector2(520, 44)
+	ask_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(ask_note)
+
 	# 抗议横幅
 	protest_label = UIU.label("后面排队的人开始抗议！", 20, UIU.COL_RED)
 	protest_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -233,6 +251,10 @@ func _build() -> void:
 	)
 	mag_btn.toggle_mode = true
 	tools.add_child(mag_btn)
+	tools.add_child(_tool_button("询问旅客 [W]", 150, func(): _open_ask()))
+	photo_btn = _tool_button("照片比对 [P]", 150, func(): _open_photo())
+	photo_btn.visible = false
+	tools.add_child(photo_btn)
 	if day >= 6 or endless:
 		tools.add_child(_tool_button("股权查询 [G]", 150, func(): _open_overlay("equity")))
 	if day >= 7 or endless:
@@ -361,6 +383,11 @@ func _input(event: InputEvent) -> void:
 				_open_overlay("rulebook")
 			KEY_Q, KEY_T:
 				_open_overlay("terminal")
+			KEY_W:
+				_open_ask()
+			KEY_P:
+				if photo_btn.visible:
+					_open_photo()
 			KEY_G:
 				if day >= 6:
 					_open_overlay("equity")
@@ -423,6 +450,10 @@ func _next_traveler() -> void:
 	if current.has("revisit"):
 		Travelers.apply_revisit(current)
 		Game.achieve("reunion")
+	asks_left = 2
+	ask_note.text = " "
+	current["_photo_proof"] = false
+	photo_btn.visible = current.has("photo_suspect")
 	card.setup(current, day)
 
 	portrait.visible = true
@@ -485,6 +516,87 @@ func _set_stamps(on: bool) -> void:
 		detain_btn.disabled = true
 
 
+## ---------------- 审问 ----------------
+func _open_ask() -> void:
+	if asks_left <= 0 or overlay != null:
+		return
+	asks_left -= 1
+	Sfx.play("beep", -14.0)
+	var pool: Array = Travelers.ask_pool(current, 99 if endless else day)
+	var w := UIU.make_window(self, "询问（本旅客还可问 %d 次）" % asks_left, Vector2(560, 330))
+	var c: VBoxContainer = w["content"]
+	for item in pool:
+		var q: String = String(item["q"])
+		var it: Dictionary = item
+		var b := UIU.button(q, 16, func():
+			_ask_show(q, it)
+			w["win"].queue_free()
+		, Color("3f4738"))
+		b.custom_minimum_size = Vector2(508, 48)
+		c.add_child(b)
+
+
+func _ask_show(q: String, item: Dictionary) -> void:
+	_say("你：" + q)
+	await Game.wait(0.8)
+	_say("旅客：" + String(item["a"]))
+	var lying := bool(item.get("lie", false)) and String(current.get("expect", "")) == "reject"
+	if lying:
+		portrait.set_micro({"pupil": 1.9, "sweat": true})
+		ask_note.text = (ask_note.text + " ｜ " if ask_note.text != " " else "") + "【记录】问到「%s」时，他瞳孔放大，出了汗。" % q
+		Sfx.play("beep_low", -14.0)
+		await Game.wait(1.2)
+		portrait.set_micro({"pupil": 1.0, "sweat": false})
+	else:
+		ask_note.text = (ask_note.text + " ｜ " if ask_note.text != " " else "") + "【记录】%s——对答如流。" % q
+
+
+## ---------------- 照片比对 ----------------
+func _open_photo() -> void:
+	if overlay != null:
+		return
+	Sfx.play("shutter", -10.0)
+	var m := Overlays.PhotoMatch.new()
+	m.setup(current.get("look", {}))
+	add_child(m)
+	m.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ok: bool = await m.done
+	if ok and is_instance_valid(card):
+		current["_photo_proof"] = true
+		_float("铁证：照片伪造已确认", UIU.COL_RED, Vector2(250, 380))
+		_say("旅客：这照片……只是拍得不好而已！")
+		portrait.set_expression("nervous")
+
+
+## ---------------- 小费抉择 ----------------
+func _bribe_dialog() -> int:
+	var t := current
+	var w := UIU.make_window(self, "旅客悄悄塞过来一张购物卡……", Vector2(560, 300))
+	var c: VBoxContainer = w["content"]
+	c.add_child(UIU.label("“警官，通融一下。八百的卡，密码是生日。”
+（他是真违规者。你看得出来。）", 15, UIU.COL_TEXT_LIGHT))
+	c.add_child(UIU.vsep(4))
+	var choice := {"v": -1}
+	var mk := func(txt: String, col: Color, val: int) -> Button:
+		var b := UIU.button(txt, 16, func():
+			choice["v"] = val
+			w["win"].queue_free()
+		, col)
+		b.custom_minimum_size = Vector2(508, 52)
+		return b
+	c.add_child(mk.call("收下，放他过去（+8 克朗，他算漏放）", Color("5a4a2a"), 0))
+	c.add_child(mk.call("没收并上报（+3 克朗，照常盖章）", Color("3e5a3a"), 1))
+	c.add_child(mk.call("严词拒绝（照常盖章）", Color("3a4038"), 2))
+	if Game.test_mode:
+		await Game.wait(0.05)
+		choice["v"] = 1
+		w["win"].queue_free()
+		return 1
+	while choice["v"] == -1:
+		await Game.wait(0.05)
+	return int(choice["v"])
+
+
 ## ---------------- 暗号测谎（第 3 天+） ----------------
 func _run_code_test(t: Dictionary) -> void:
 	if not t.has("code"):
@@ -503,7 +615,20 @@ func _run_code_test(t: Dictionary) -> void:
 	official_line.text = "军官：突击检查。问一个问题。"
 	await Game.wait(0.9)
 
-	var code: Dictionary = Rules.codes()[int(t["code"]["idx"])]
+	var code: Dictionary
+	if Game.test_mode:
+		for cc in Rules.codes():
+			if String(cc["type"]) == "cn":
+				code = cc
+				break
+	else:
+		official_line.text = "军官：（把暗号本拍在桌上）你问。"
+		var pick := Overlays.CodePick.new()
+		add_child(pick)
+		pick.set_anchors_preset(Control.PRESET_FULL_RECT)
+		code = await pick.picked
+	if code.is_empty():
+		code = Rules.codes()[0]
 	var mode: String = t["code"]["mode"]
 	official_line.text = "军官（盯着旅客）：" + String(code["q"])
 	Sfx.play("beep_low", -10.0)
@@ -602,6 +727,21 @@ func _evaluate(action: String) -> Dictionary:
 func _stamp(action: String) -> void:
 	if not stamps_enabled or current.is_empty():
 		return
+	# 小费抉择：真违规者被拒时可能塞钱
+	if action in ["deny", "detain"] and current.has("bribe") and not current.get("_bribe_done", false):
+		current["_bribe_done"] = true
+		_set_stamps(false)
+		Sfx.play("page", -8.0)
+		var choice := await _bribe_dialog()
+		if choice == 0:
+			Game.money += 8
+			current["_bribe_taken"] = true
+			action = "approve"
+			if Game.rng.randf() < 0.25:
+				current["_bribe_caught"] = true
+		elif choice == 1:
+			Game.money += 3
+			_float("上交购物卡 +3 克朗", UIU.COL_YELLOW, Vector2(1030, 640))
 	_set_stamps(false)
 	detain_btn.visible = false
 
@@ -639,10 +779,22 @@ func _stamp(action: String) -> void:
 			portrait.set_expression("shock")
 
 	# 判罚展示
+	if current.get("_photo_proof", false) and String(ev.get("kind", "")) == "caught":
+		verdict_line.add_theme_color_override("font_color", UIU.COL_GREEN)
+		verdict_line.text = "+1 查获（照片伪造实锤）"
+		_float("+1 查获 [铁证]", UIU.COL_GREEN, Vector2(230, 380))
+	if current.get("_bribe_taken", false):
+		if current.get("_bribe_caught", false):
+			stats["wrong_basis"] += 1
+			aftermath_line.text = "【上级抽查】你收的那张购物卡，卡号在案。记过一次。"
+			Sfx.play("buzz", -10.0)
+		else:
+			aftermath_line.text = "【你】那张卡在抽屉最里面。没人看见。"
 	match String(ev.get("kind", "")):
 		"caught":
-			verdict_line.add_theme_color_override("font_color", UIU.COL_GREEN)
-			_float("+1 查获", UIU.COL_GREEN, Vector2(230, 380))
+			if not current.get("_photo_proof", false):
+				verdict_line.add_theme_color_override("font_color", UIU.COL_GREEN)
+				_float("+1 查获", UIU.COL_GREEN, Vector2(230, 380))
 		"ok", "gray_ok":
 			verdict_line.add_theme_color_override("font_color", UIU.COL_GREY)
 		"missed":
@@ -765,6 +917,8 @@ func _end_day() -> void:
 
 func _auto_decide() -> void:
 	await Game.wait(0.1)
+	if current.has("photo_suspect"):
+		current["_photo_proof"] = true
 	while code_state == "pending":
 		await Game.wait(0.05)
 	var action := ""

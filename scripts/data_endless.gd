@@ -197,7 +197,13 @@ static func _make_traveler(night_n: int, no: int, rule: Dictionary) -> Dictionar
 	if innocent and expect == "reject":
 		aftermath = ["他其实什么都没做错。", "他的孩子今晚等他回家吃饭。", "他只是长错了名字。", "他的眼镜，是无辜的。"][r.randi_range(0, 3)]
 
-	return {
+	var extra := {}
+	if dirty:
+		if r.randf() < 0.3:
+			extra["photo_suspect"] = true
+		if r.randf() < 0.15:
+			extra["bribe"] = true
+	extra.merge({
 		"id": "endless_%d_%d" % [night_n, no],
 		"name": name, "expr": ["calm", "nervous", "innocent", "shifty"][r.randi_range(0, 3)],
 		"look": look,
@@ -210,7 +216,8 @@ static func _make_traveler(night_n: int, no: int, rule: Dictionary) -> Dictionar
 		"truth_region": truth_region, "expect": expect, "innocent": innocent,
 		"reason": "；".join(PackedStringArray(reasons_txt)),
 		"aftermath": aftermath, "_no": no,
-	}
+	}, true)
+	return extra
 
 
 static func _gen_ip(region: String) -> String:

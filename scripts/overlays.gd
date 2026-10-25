@@ -273,3 +273,170 @@ class Roster extends Control:
 			list.add_child(row)
 
 		c.add_child(UIU.label("「同一组织内若有 1 人被拒，全员拒绝，直至另行通知。」", 12, UIU.COL_GREY))
+
+
+## ---------------- 暗号自选窗（第 3 天+：军官把暗号本扔给你） ----------------
+class CodePick extends Control:
+	signal picked(code: Dictionary)
+
+	var _pool: Array = []
+
+	func _ready() -> void:
+		var all := Rules.codes()
+		var cns: Array = []
+		var intls: Array = []
+		for c in all:
+			if String(c["type"]) == "cn":
+				cns.append(c)
+			else:
+				intls.append(c)
+		cns.shuffle()
+		intls.shuffle()
+		_pool = [cns[0], cns[1], intls[0]] if cns.size() >= 2 and intls.size() >= 1 else all.duplicate()
+		if Game.test_mode:
+			_pool = []
+			for c in all:
+				if String(c["type"]) == "cn":
+					_pool.append(c)
+					break
+			_pool.append(all[all.size() - 1])
+
+		var w := UIU.make_window(self, "军官把暗号本拍在桌上：“你问。”", Vector2(560, 330))
+		w["win"].tree_exited.connect(func():
+			if _pool.is_empty():
+				queue_free()
+		)
+		var c: VBoxContainer = w["content"]
+		c.add_child(UIU.label("挑一句问旅客。通用问题问不出东西，\n文化暗号——答得出的，就带走。", 14, UIU.COL_GREY))
+		c.add_child(UIU.vsep(6))
+		for code in _pool:
+			var tag := "【文化暗号】" if String(code["type"]) == "cn" else "【通用问题】"
+			var b := UIU.button("%s %s" % [tag, String(code["q"])], 17, func():
+				picked.emit(code)
+				w["win"].queue_free()
+				queue_free()
+			, Color("4a3f33") if String(code["type"]) == "cn" else Color("3a4038"))
+			b.custom_minimum_size = Vector2(500, 56)
+			c.add_child(b)
+		if Game.test_mode:
+			await Game.wait(0.05)
+			for code in _pool:
+				if String(code["type"]) == "cn":
+					picked.emit(code)
+					w["win"].queue_free()
+					queue_free()
+					return
+
+
+## ---------------- 照片比对（找茬小游戏） ----------------
+class PhotoMatch extends Control:
+	signal done(hit_all: bool)
+
+	var look: Dictionary = {}
+	var diffs: Array = []          # 命中的部位名
+	var _found: Array[String] = []
+	var _miss := 0
+	var _result: Label
+
+	func setup(p_look: Dictionary) -> void:
+		look = p_look
+
+	func _ready() -> void:
+		# 随机决定两处差异（眼镜/胡子/发型）
+		var parts := ["glasses", "beard", "hair"]
+		parts.shuffle()
+		diffs = parts.slice(0, 2)
+
+		var w := UIU.make_window(self, "档案比对 · 找出档案照与卡片照的不同", Vector2(760, 470))
+		w["win"].tree_exited.connect(func():
+			if _found.size() < 2:
+				done.emit(false)
+			queue_free()
+		)
+		var c: VBoxContainer = w["content"]
+		c.add_child(UIU.label("左：卡片照片　｜　右：边境档案库照片　（点击档案照中的不同之处，共 2 处）", 14, UIU.COL_TEXT_LIGHT))
+
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 60)
+		row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		c.add_child(row)
+
+		var cap := Portrait.new()
+		cap.set_look(look.duplicate())
+		cap.set_expression("calm")
+		cap.scale = Vector2(1.7, 1.7)
+		var cap_box := Control.new()
+		cap_box.custom_minimum_size = Vector2(300, 300)
+		cap.position = Vector2(150, 150)
+		cap_box.add_child(cap)
+		row.add_child(cap_box)
+
+		var file_box := Control.new()
+		file_box.custom_minimum_size = Vector2(300, 300)
+		var file_look := look.duplicate()
+		for p in diffs:
+			match String(p):
+				"glasses":
+					file_look["glasses"] = not bool(look.get("glasses", false))
+				"beard":
+					file_look["beard"] = not bool(look.get("beard", false))
+				"hair":
+					file_look["hair_style"] = (int(look.get("hair_style", 0)) + 2) % 5
+		var fp := Portrait.new()
+		fp.set_look(file_look)
+		fp.set_expression("still")
+		fp.scale = Vector2(1.7, 1.7)
+		fp.position = Vector2(150, 150)
+		file_box.add_child(fp)
+		row.add_child(file_box)
+
+		# 热点区（档案照，Portrait 坐标 u=7，scale 1.7 → 1u≈12px）
+		var hotspots := {
+			"glasses": Rect2(150 - 5 * 12, 150 - 4 * 12, 10 * 12, 4 * 12),
+			"beard": Rect2(150 - 5 * 12, 150 + 3 * 12, 10 * 12, 6 * 12),
+			"hair": Rect2(150 - 8 * 12, 150 - 10 * 12, 16 * 12, 5 * 12),
+		}
+		for p in hotspots.keys():
+			var part := String(p)
+			var btn := Button.new()
+			btn.text = ""
+			btn.position = hotspots[part].position
+			btn.size = hotspots[part].size
+			btn.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+			btn.add_theme_stylebox_override("hover", UIU.sbox(Color(1, 1, 1, 0.06)))
+			btn.add_theme_stylebox_override("pressed", UIU.sbox(Color(1, 1, 1, 0.1)))
+			btn.pressed.connect(func():
+				_on_click(part, w)
+			)
+			file_box.add_child(btn)
+
+		_result = UIU.label(" ", 14, UIU.COL_TEXT_LIGHT)
+		c.add_child(_result)
+		if Game.test_mode:
+			await Game.wait(0.05)
+			for p in diffs:
+				_on_click(String(p), w)
+
+	func _on_click(part: String, w: Dictionary) -> void:
+		if part in diffs and part not in _found:
+			_found.append(part)
+			_result.text = "✓ 找到不同：%s　（%d/2）" % [_part_name(part), _found.size()]
+			Sfx.play("ding", -8.0)
+			if _found.size() >= 2:
+				_result.text = "结论：照片与档案不符 —— 系伪造。"
+				done.emit(true)
+				await Game.wait(0.3)
+				w["win"].queue_free()
+				queue_free()
+		else:
+			_miss += 1
+			_result.text = "这里没有不同。（误点 %d 次）" % _miss
+			Sfx.play("beep_low", -16.0)
+
+	func _part_name(p: String) -> String:
+		match p:
+			"glasses":
+				return "眼镜"
+			"beard":
+				return "胡须"
+		return "发型"

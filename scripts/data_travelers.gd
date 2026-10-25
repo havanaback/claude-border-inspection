@@ -31,7 +31,7 @@ static func day_roster(day: int) -> Array:
 static func _day1() -> Array:
 	return [
 		{
-			"id": "day1_wang", "name": "王建国", "expr": "innocent",
+			"id": "day1_wang", "name": "王建国", "expr": "innocent", "photo_suspect": true,
 			"look": _lk("d9a679", "3a2a1c", 0, {"beard": true, "clothes": "6b5a43"}),
 			"fields": {"ip": "61.175.200.11", "region_claim": "美国·加州", "nationality": "美国（自称）", "device": "联想 ThinkPad", "reason": "旅游"},
 			"lines": {"intro": "警官好！我去美国旅了个游，刚回来！", "approve": "嘿，谢了警官！", "deny": "我就是去美国旅个游回来的……"},
@@ -89,6 +89,8 @@ static func _day2() -> Array:
 	return [
 		{
 			"id": "day2_li", "name": "李明远", "expr": "shifty",
+			"qa": [{"q": "你到底是哪里人？", "a": "我……加州人。那边阳光很好。", "lie": true},
+				{"q": "输入法为什么是搜狗？", "a": "顺手装的。装了十年了，习惯了。", "lie": true}],
 			"look": _lk("d9a679", "3a2a1c", 1, {"glasses": true, "clothes": "44506b"}),
 			"fields": {"ip": "104.28.44.9", "region_claim": "美国·加州", "nationality": "美国（自称）", "device": "组装台式机", "reason": "远程办公", "tz": "Asia/Shanghai", "lang": "简体中文", "ime": "搜狗拼音"},
 			"lines": {"intro": "我……我是美籍华人，刚搬过去。", "approve": "哈！我就说没问题。", "deny": "我认识的人都能用……"},
@@ -230,7 +232,7 @@ static func _day4() -> Array:
 			"reason": "BIN 6222xx＝中国银联/工商银行（放大镜可见）。支付与归属地不一致。",
 		},
 		{
-			"id": "day4_sticker", "name": "刘思聪", "expr": "shifty",
+			"id": "day4_sticker", "name": "刘思聪", "expr": "shifty", "photo_suspect": true,
 			"look": _lk("c98b60", "1c1c1c", 0, {"glasses": true, "clothes": "3a4a6b"}),
 			"fields": {"ip": "104.28.99.31", "region_claim": "美国·加州", "nationality": "美国（自称）", "device": "MacBook", "reason": "投资", "tz": "America/Los_Angeles", "lang": "English", "ime": "English (US)", "pay": "Visa（卡面有贴纸）", "bin": "622260"},
 			"hidden": {"pay": "放大镜·贴纸覆盖：揭开是银联标志，贴纸边缘有翘起。", "bin": "放大镜·BIN 6222xx：中国银联。"},
@@ -256,7 +258,7 @@ static func _day4() -> Array:
 			"reason": "支付方式「支付宝」＝高风险（第四条）。",
 		},
 		{
-			"id": "day4_wechat", "name": "赵鹏", "expr": "nervous",
+			"id": "day4_wechat", "name": "赵鹏", "expr": "nervous", "bribe": true,
 			"look": _lk("d9a679", "3a2a1c", 0, {"beard": true, "clothes": "6b5a43"}),
 			"fields": {"ip": "45.79.100.2", "region_claim": "美国·纽约", "nationality": "美国（自称）", "device": "组装机", "reason": "游戏开发", "tz": "America/New_York", "lang": "English", "ime": "English (US)", "pay": "微信支付", "bin": "—"},
 			"lines": {"intro": "微信支付，海外版也是微信！", "approve": "稳！", "deny": "那我换 PayPal 行不行？"},
@@ -304,7 +306,7 @@ static func _day5() -> Array:
 			"reason": "API 地址 api.anthropic.com.cn 多出 .cn 后缀，并非官方（放大镜可见）。",
 		},
 		{
-			"id": "day5_typo", "name": "吴建国", "expr": "shifty",
+			"id": "day5_typo", "name": "吴建国", "expr": "shifty", "photo_suspect": true,
 			"look": _lk("c98b60", "2a2a2a", 1, {"clothes": "3a4a6b"}),
 			"fields": {"ip": "98.44.120.9", "region_claim": "美国·加州", "nationality": "美国（自称）", "device": "ThinkPad", "reason": "数据分析", "tz": "America/Los_Angeles", "lang": "English", "ime": "English (US)", "pay": "Visa", "bin": "402166", "api": "api.anthopic.com"},
 			"hidden": {"api": "放大镜·逐字比对：anthropic → anthopic，少了一个字母 r。中转站。"},
@@ -377,7 +379,7 @@ static func _day6() -> Array:
 			"reason": "无中资持股，应准予。",
 		},
 		{
-			"id": "day6_51", "name": "Kevin Zhao", "expr": "nervous",
+			"id": "day6_51", "name": "Kevin Zhao", "expr": "nervous", "bribe": true,
 			"look": _lk("d9a679", "3a2a1c", 0, {"glasses": true, "clothes": "44506b"}),
 			"fields": {"ip": "23.106.88.4", "region_claim": "美国·加州", "nationality": "美国", "device": "MacBook", "reason": "创业", "tz": "America/Los_Angeles", "lang": "English", "ime": "English (US)", "pay": "Visa", "bin": "402155", "api": "api.anthropic.com", "employer": "旧金山 Nimbus Labs", "equity": ["旧金山 Nimbus Labs", "　← 51% 北京华控资本", "计算：直接持股 51%"]},
 			"lines": {"intro": "我们在旧金山，办公室 overlooking the bay！", "approve": "Thanks!", "deny": "51%……就差一个点啊！"},
@@ -579,3 +581,24 @@ static func apply_revisit(t: Dictionary) -> void:
 				t["lines"]["intro"] = "警官，我不入境了。GLM 挺好的。给您带了杯蜜雪冰城——柠檬水，四块钱，真香。"
 			else:
 				t["lines"]["intro"] = "警官！那天谢谢您。不过我现在……用国产的了。给您带了杯蜜雪冰城。"
+
+
+## 审问问题池（通用 + 按字段动态戳谎题）
+static func ask_pool(t: Dictionary, day: int) -> Array:
+	var out: Array = []
+	var f: Dictionary = t.get("fields", {})
+	out.append({"q": "来 Anthrotzka 做什么？", "a": "我来%s。都写在卡上了。" % String(f.get("reason", "办事")), "lie": false})
+	out.append({"q": "卡片上的信息是你自己填的吗？", "a": "当然。字字属实。", "lie": false})
+	var exp := Rules.region_expect(String(f.get("region_claim", "")))
+	if day >= 2 and not exp["tzs"].is_empty() and not (String(f.get("tz", "")) in exp["tzs"]):
+		out.append({"q": "你的时区为什么是 %s？" % String(f.get("tz", "")),
+			"a": "系统重装忘了改。真的忘了。", "lie": true})
+	if day >= 4 and String(f.get("pay", "")) in ["支付宝", "微信支付"]:
+		out.append({"q": "为什么用%s付款？" % String(f.get("pay", "")), "a": "全球通用嘛。", "lie": true})
+	if day >= 5 and String(f.get("api", "")) != "api.anthropic.com" and f.has("api"):
+		out.append({"q": "为什么用这个 API 地址？", "a": "更快嘛。快就是好。", "lie": true})
+	if t.has("qa"):
+		out.append_array(t["qa"])
+	if out.size() > 4:
+		out = out.slice(0, 4)
+	return out
