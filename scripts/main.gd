@@ -45,6 +45,11 @@ func _ready() -> void:
 			_mount(ts)
 			if Game.shot == "title_click":
 				_click_test(ts)
+		elif Game.shot == "title_reclick":
+			_mount_title()
+			await get_tree().create_timer(2.2).timeout
+			if current is Title:
+				_click_test(current, "title_reclick")
 			elif Game.shot == "trailer_title":
 				Game.end_movie(5.0)
 		elif Game.shot == "trailer_final":
@@ -91,6 +96,18 @@ func swap(scene: Control, params: Dictionary = {}) -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
+## 统一的标题入口：任何路径返回标题都必须连接按钮信号，否则点不了
+func _mount_title() -> void:
+	var t := Title.new()
+	t.finished.connect(func():
+		if Game.endless:
+			_goto_night(1)
+		else:
+			_goto_day(Game.day)
+	)
+	swap(t)
+
+
 ## 无尽加班模式：夜循环
 func _goto_night(n: int) -> void:
 	Game.endless_night = n
@@ -114,8 +131,7 @@ func _goto_night(n: int) -> void:
 					Game.endless = false
 					Game.endless_over = false
 					Game.save_game()
-					var t := Title.new()
-					swap(t)
+					_mount_title()
 				else:
 					_goto_night(Game.endless_night + 1)
 			)
@@ -151,8 +167,7 @@ func _goto_day(day: int) -> void:
 							var cr := Credits.new()
 							cr.finished.connect(func():
 								Game.clear_save()
-								var t := Title.new()
-								swap(t)
+								_mount_title()
 							)
 							swap(cr)
 						)
@@ -202,7 +217,7 @@ func _loading_screen() -> void:
 
 
 ## 自动点击验证：向标题页的“开始上班”注入真实鼠标事件，确认点击不再被透明层吞掉
-func _click_test(title: Control) -> void:
+func _click_test(title: Control, shot_name: String = "title_click") -> void:
 	await get_tree().create_timer(1.2).timeout
 	var btn: Button = null
 	for n in title.find_children("*", "Button", true, false):
@@ -212,7 +227,7 @@ func _click_test(title: Control) -> void:
 			break
 	if btn == null:
 		print("CLICK_TEST: no button found")
-		Game.take_shot("title_click")
+		Game.take_shot(shot_name)
 		return
 	var gp := btn.get_global_rect().get_center()
 	var ev := InputEventMouseButton.new()
@@ -226,7 +241,7 @@ func _click_test(title: Control) -> void:
 	Input.parse_input_event(ev2)
 	print("CLICK_TEST: clicked ", btn.text, " at ", gp)
 	await get_tree().create_timer(2.0).timeout
-	Game.take_shot("title_click")
+	Game.take_shot(shot_name)
 
 
 ## F11 切换全屏 / 窗口
