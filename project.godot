@@ -4,7 +4,7 @@
 ;
 ; Format:
 ;   [section] ; section goes between []
-;   param=value ; assign to parameters
+;   param=value ; assign values to parameters
 
 config_version=5
 
@@ -33,5 +33,4 @@ window/stretch/aspect="expand"
 
 [rendering]
 
-rendering_device/driver.windows="vulkan"
 environment/defaults/default_clear_color=Color(0.11, 0.13, 0.1, 1)

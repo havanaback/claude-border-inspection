@@ -21,3 +21,6 @@ dist/
 
 # 无关软件的数据
 .workbuddy/
+
+# 视频不入库（本地保留）
+docs/trailer.mp4
